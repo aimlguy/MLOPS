@@ -1,0 +1,141 @@
+{
+  "dashboard": {
+    "title": "ML Model Monitoring Dashboard",
+    "tags": ["mlops", "ml-model", "monitoring"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Model Predictions Rate",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(model_predictions_total[5m])",
+            "legendFormat": "{{model_version}} - {{outcome}}",
+            "refId": "A"
+          }
+        ],
+        "yaxis": {
+          "label": "Predictions/sec"
+        }
+      },
+      {
+        "id": 2,
+        "title": "Prediction Latency (P95)",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(model_prediction_latency_seconds_bucket[5m]))",
+            "legendFormat": "{{model_version}}",
+            "refId": "A"
+          }
+        ],
+        "yaxis": {
+          "label": "Latency (seconds)"
+        }
+      },
+      {
+        "id": 3,
+        "title": "Model Performance (AUC)",
+        "type": "gauge",
+        "gridPos": {"x": 0, "y": 8, "w": 8, "h": 6},
+        "targets": [
+          {
+            "expr": "model_performance_auc",
+            "legendFormat": "AUC Score",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "orientation": "auto",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          },
+          "showThresholdLabels": true,
+          "showThresholdMarkers": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 0.75, "color": "yellow"},
+                {"value": 0.85, "color": "green"}
+              ]
+            },
+            "min": 0,
+            "max": 1
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Data Drift Scores",
+        "type": "graph",
+        "gridPos": {"x": 8, "y": 8, "w": 16, "h": 6},
+        "targets": [
+          {
+            "expr": "model_data_drift_score",
+            "legendFormat": "{{feature_name}}",
+            "refId": "A"
+          }
+        ],
+        "yaxis": {
+          "label": "Drift Score"
+        },
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {"type": "gt", "params": [0.15]},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "5m", "now"]},
+              "type": "query"
+            }
+          ]
+        }
+      },
+      {
+        "id": 5,
+        "title": "Prediction Distribution",
+        "type": "piechart",
+        "gridPos": {"x": 0, "y": 14, "w": 8, "h": 6},
+        "targets": [
+          {
+            "expr": "sum by (outcome) (model_predictions_total)",
+            "legendFormat": "{{outcome}}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Total Predictions by Model Version",
+        "type": "stat",
+        "gridPos": {"x": 8, "y": 14, "w": 16, "h": 6},
+        "targets": [
+          {
+            "expr": "model_predictions_total",
+            "legendFormat": "{{model_version}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value"
+        }
+      }
+    ],
+    "refresh": "30s",
+    "schemaVersion": 27,
+    "version": 1
+  }
+}

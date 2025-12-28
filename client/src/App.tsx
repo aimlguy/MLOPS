@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import Predictor from "@/pages/Predictor";
 import Architecture from "@/pages/Architecture";
+import Monitoring from "@/pages/Monitoring";
 
 function Router() {
   return (
@@ -14,6 +15,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/predict" component={Predictor} />
       <Route path="/architecture" component={Architecture} />
+      <Route path="/monitoring" component={Monitoring} />
       <Route component={NotFound} />
     </Switch>
   );

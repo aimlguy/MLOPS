@@ -1,38 +1,38 @@
-import { pgTable, text, serial, integer, boolean, timestamp, doublePrecision, jsonb } from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // === TABLE DEFINITIONS ===
 // We'll use this to log predictions and model runs
-export const modelRuns = pgTable("model_runs", {
-  id: serial("id").primaryKey(),
+export const modelRuns = sqliteTable("model_runs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   runId: text("run_id").notNull(), // MLflow Run ID
   status: text("status").notNull(), // running, completed, failed
-  metrics: jsonb("metrics"), // Accuracy, F1, AUC
-  parameters: jsonb("parameters"), // XGBoost params
-  createdAt: timestamp("created_at").defaultNow(),
+  metrics: text("metrics"), // JSON string of metrics
+  parameters: text("parameters"), // JSON string of parameters
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 
-export const predictions = pgTable("predictions", {
-  id: serial("id").primaryKey(),
+export const predictions = sqliteTable("predictions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   // Input features
   gender: text("gender").notNull(),
-  scheduledDay: timestamp("scheduled_day").notNull(),
-  appointmentDay: timestamp("appointment_day").notNull(),
+  scheduledDay: integer("scheduled_day", { mode: "timestamp" }).notNull(),
+  appointmentDay: integer("appointment_day", { mode: "timestamp" }).notNull(),
   age: integer("age").notNull(),
   neighbourhood: text("neighbourhood").notNull(),
-  scholarship: boolean("scholarship").default(false),
-  hypertension: boolean("hypertension").default(false),
-  diabetes: boolean("diabetes").default(false),
-  alcoholism: boolean("alcoholism").default(false),
+  scholarship: integer("scholarship", { mode: "boolean" }).default(false),
+  hypertension: integer("hypertension", { mode: "boolean" }).default(false),
+  diabetes: integer("diabetes", { mode: "boolean" }).default(false),
+  alcoholism: integer("alcoholism", { mode: "boolean" }).default(false),
   handicap: integer("handicap").default(0),
-  smsReceived: boolean("sms_received").default(false),
+  smsReceived: integer("sms_received", { mode: "boolean" }).default(false),
   
   // Output
-  predictionProbability: doublePrecision("prediction_probability"),
-  predictedNoShow: boolean("predicted_no_show"),
+  predictionProbability: real("prediction_probability"),
+  predictedNoShow: integer("predicted_no_show", { mode: "boolean" }),
   
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 
 // === SCHEMAS ===
@@ -41,6 +41,9 @@ export const insertPredictionSchema = createInsertSchema(predictions).omit({
   createdAt: true,
   predictionProbability: true,
   predictedNoShow: true 
+}).extend({
+  scheduledDay: z.coerce.date(),
+  appointmentDay: z.coerce.date()
 });
 
 export const insertModelRunSchema = createInsertSchema(modelRuns).omit({ id: true, createdAt: true });
@@ -51,6 +54,7 @@ export type InsertModelRun = z.infer<typeof insertModelRunSchema>;
 
 export type Prediction = typeof predictions.$inferSelect;
 export type PredictionInput = z.infer<typeof insertPredictionSchema>;
+export type InsertPrediction = PredictionInput;
 
 // API Types
 export type PredictionResponse = {

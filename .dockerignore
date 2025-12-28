@@ -61,8 +61,8 @@ data/processed/*.csv
 .dvc/
 *.dvc
 
-# MLflow (large artifacts)
-mlruns/
+# MLflow (we need mlruns for model registry, but exclude large artifacts)
+# mlruns/  # COMMENTED OUT - we need this for production models!
 mlartifacts/
 
 # Jupyter

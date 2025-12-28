@@ -16,9 +16,13 @@ class ModelRegistry:
     
     def __init__(
         self,
-        tracking_uri: str = "file:///app/mlruns",
+        tracking_uri: str = None,
         model_name: str = "noshow-prediction-model"
     ):
+        # Use current MLflow tracking URI if not specified
+        if tracking_uri is None:
+            tracking_uri = mlflow.get_tracking_uri()
+        
         self.tracking_uri = tracking_uri
         self.model_name = model_name
         mlflow.set_tracking_uri(tracking_uri)
@@ -43,7 +47,7 @@ class ModelRegistry:
         """
         model_uri = f"runs:/{run_id}/{artifact_path}"
         
-        print(f"📦 Registering model from run: {run_id}")
+        print(f">> Registering model from run: {run_id}")
         
         model_version = mlflow.register_model(
             model_uri=model_uri,
@@ -52,7 +56,7 @@ class ModelRegistry:
         )
         
         version = model_version.version
-        print(f"✅ Model registered: {self.model_name} v{version}")
+        print(f">> Model registered: {self.model_name} v{version}")
         
         return version
     
@@ -70,7 +74,7 @@ class ModelRegistry:
             )
             
             if not prod_versions:
-                print("ℹ️ No Production model found")
+                print("INFO: No Production model found")
                 return None
             
             prod_version = prod_versions[0]
@@ -79,7 +83,7 @@ class ModelRegistry:
             return run.data.metrics
             
         except Exception as e:
-            print(f"⚠️ Error getting Production model metrics: {e}")
+            print(f"WARNING: Error getting Production model metrics: {e}")
             return None
     
     def compare_models(
@@ -104,20 +108,20 @@ class ModelRegistry:
         candidate_metric = candidate_run.data.metrics.get(metric_name)
         
         if candidate_metric is None:
-            print(f"⚠️ Metric '{metric_name}' not found in candidate run")
+            print(f"WARNING: Metric '{metric_name}' not found in candidate run")
             return False
         
         # Get production metrics
         prod_metrics = self.get_production_model_metrics()
         
         if prod_metrics is None:
-            print("✅ No Production model - candidate will be promoted")
+            print(">> No Production model - candidate will be promoted")
             return True
         
         prod_metric = prod_metrics.get(metric_name)
         
         if prod_metric is None:
-            print(f"⚠️ Metric '{metric_name}' not found in Production model")
+            print(f"WARNING: Metric '{metric_name}' not found in Production model")
             return True
         
         # Compare
@@ -126,10 +130,10 @@ class ModelRegistry:
         else:
             is_better = candidate_metric < prod_metric
         
-        print(f"\n📊 Model Comparison ({metric_name}):")
+        print(f"\n>> Model Comparison ({metric_name}):")
         print(f"   Production: {prod_metric:.4f}")
         print(f"   Candidate:  {candidate_metric:.4f}")
-        print(f"   Result: {'✅ BETTER' if is_better else '❌ WORSE'}\n")
+        print(f"   Result: {'BETTER' if is_better else 'WORSE'}\n")
         
         return is_better
     
@@ -157,7 +161,7 @@ class ModelRegistry:
                 )
                 
                 for prod_version in prod_versions:
-                    print(f"📦 Archiving v{prod_version.version}")
+                    print(f">> Archiving v{prod_version.version}")
                     self.client.transition_model_version_stage(
                         name=self.model_name,
                         version=prod_version.version,
@@ -165,18 +169,18 @@ class ModelRegistry:
                     )
             
             # Promote new version
-            print(f"🚀 Promoting v{version} to Production")
+            print(f">> Promoting v{version} to Production")
             self.client.transition_model_version_stage(
                 name=self.model_name,
                 version=version,
                 stage="Production"
             )
             
-            print(f"✅ Model v{version} is now in Production!")
+            print(f">> Model v{version} is now in Production!")
             return True
             
         except Exception as e:
-            print(f"❌ Promotion failed: {e}")
+            print(f"ERROR: Promotion failed: {e}")
             return False
     
     def auto_promote_if_better(
@@ -201,7 +205,7 @@ class ModelRegistry:
             Model version if promoted, None otherwise
         """
         print("\n" + "="*60)
-        print("🤖 AUTOMATIC MODEL PROMOTION EVALUATION")
+        print(">> AUTOMATIC MODEL PROMOTION EVALUATION")
         print("="*60)
         
         # Register the model
@@ -219,12 +223,12 @@ class ModelRegistry:
             
             if success:
                 print("\n" + "="*60)
-                print(f"✅ MODEL v{version} PROMOTED TO PRODUCTION")
+                print(f">> MODEL v{version} PROMOTED TO PRODUCTION")
                 print("="*60 + "\n")
                 return version
         else:
             print("\n" + "="*60)
-            print(f"❌ MODEL v{version} NOT PROMOTED (performance insufficient)")
+            print(f">> MODEL v{version} NOT PROMOTED (performance insufficient)")
             print("="*60 + "\n")
         
         return None

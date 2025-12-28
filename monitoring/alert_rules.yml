@@ -1,0 +1,55 @@
+# Prometheus Alert Rules for ML Model Monitoring
+
+groups:
+  - name: ml_model_alerts
+    interval: 30s
+    rules:
+      # Alert if model prediction latency is too high
+      - alert: HighPredictionLatency
+        expr: histogram_quantile(0.95, rate(model_prediction_latency_seconds_bucket[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High prediction latency detected"
+          description: "95th percentile prediction latency is {{ $value }}s (threshold: 0.5s)"
+      
+      # Alert if data drift is detected
+      - alert: DataDriftDetected
+        expr: model_data_drift_score > 0.15
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Data drift detected on feature {{ $labels.feature_name }}"
+          description: "Drift score is {{ $value }} (threshold: 0.15)"
+      
+      # Alert if model performance drops
+      - alert: ModelPerformanceDegradation
+        expr: model_performance_auc < 0.75
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Model performance degraded"
+          description: "Model AUC is {{ $value }} (threshold: 0.75). Consider retraining."
+      
+      # Alert if prediction volume drops significantly
+      - alert: LowPredictionVolume
+        expr: rate(model_predictions_total[5m]) < 0.1
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "Low prediction volume"
+          description: "Prediction rate is {{ $value }} per second"
+      
+      # Alert if error rate is high
+      - alert: HighErrorRate
+        expr: rate(model_predictions_total{outcome="error"}[5m]) / rate(model_predictions_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High prediction error rate"
+          description: "Error rate is {{ $value | humanizePercentage }}"

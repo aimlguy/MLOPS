@@ -1,0 +1,26 @@
+{
+  "model_name": "logistic_regression",
+  "metrics": {
+    "auc": 0.6711042253558326,
+    "f1": 0.4121783602365351,
+    "accuracy": 0.6672396634397901,
+    "model_name": "logistic_regression",
+    "timestamp": "2025-12-28T19:48:52.554709"
+  },
+  "feature_names": [
+    "Gender",
+    "Age",
+    "Neighbourhood",
+    "Scholarship",
+    "Hipertension",
+    "Diabetes",
+    "Alcoholism",
+    "Handcap",
+    "SMS_received",
+    "LeadTimeDays",
+    "ScheduledHour",
+    "ScheduledDayOfWeek",
+    "AppointmentDayOfWeek"
+  ],
+  "training_date": "2025-12-28T19:48:52.555713"
+}

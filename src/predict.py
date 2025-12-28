@@ -1,14 +1,17 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 import mlflow
 import mlflow.pyfunc
 import pandas as pd
 import numpy as np
 import os
+import time
 from datetime import datetime
 from sklearn.preprocessing import LabelEncoder
+from src.monitoring import get_monitor
 
 app = FastAPI(title="No-Show Predictor API", version="1.0.0")
+monitor = get_monitor()
 
 class PredictionRequest(BaseModel):
     patient_id: int
@@ -98,6 +101,7 @@ async def startup_event():
 
 @app.post("/predict", response_model=PredictionResponse)
 def predict(request: PredictionRequest):
+    start_time = time.time()
     """
     Predict no-show probability for a medical appointment.
     Automatically uses the latest Production model from MLflow.
@@ -184,6 +188,20 @@ def health():
         "status": "healthy",
         "model_loaded": model is not None,
         "model_info": model_info,
+        "mlflow_uri": MLFLOW_TRACKING_URI
+    }
+
+@app.get("/model-info")
+def get_model_info():
+    """
+    Get information about the currently loaded model.
+    Useful for verifying which model version is in production.
+    """
+    return {
+        "name": model_info.get("name", "unknown"),
+        "version": model_info.get("version", "unknown"),
+        "stage": model_info.get("stage", "unknown"),
+        "loaded": model is not None,
         "mlflow_uri": MLFLOW_TRACKING_URI
     }
 

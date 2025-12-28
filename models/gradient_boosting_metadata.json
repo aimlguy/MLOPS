@@ -1,0 +1,26 @@
+{
+  "model_name": "gradient_boosting",
+  "metrics": {
+    "auc": 0.7420490147737213,
+    "f1": 0.039334341906202726,
+    "accuracy": 0.7989233692210259,
+    "model_name": "gradient_boosting",
+    "timestamp": "2025-12-28T19:48:52.826905"
+  },
+  "feature_names": [
+    "Gender",
+    "Age",
+    "Neighbourhood",
+    "Scholarship",
+    "Hipertension",
+    "Diabetes",
+    "Alcoholism",
+    "Handcap",
+    "SMS_received",
+    "LeadTimeDays",
+    "ScheduledHour",
+    "ScheduledDayOfWeek",
+    "AppointmentDayOfWeek"
+  ],
+  "training_date": "2025-12-28T19:48:52.828917"
+}

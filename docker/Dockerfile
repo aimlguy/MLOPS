@@ -28,8 +28,11 @@ ENV PATH=/root/.local/bin:$PATH
 COPY src/ src/
 COPY data/ data/
 
-# Create directories for MLflow artifacts
-RUN mkdir -p /app/mlruns /app/models
+# Copy MLflow registry with trained models
+COPY mlruns/ mlruns/
+
+# Create additional directories for MLflow artifacts
+RUN mkdir -p /app/models
 
 # Environment variables for Cloud Run
 ENV MLFLOW_TRACKING_URI=file:///app/mlruns \

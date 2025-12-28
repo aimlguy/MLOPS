@@ -1,0 +1,26 @@
+{
+  "model_name": "random_forest",
+  "metrics": {
+    "auc": 0.7445399203655825,
+    "f1": 0.45147103427358204,
+    "accuracy": 0.6727585270967158,
+    "model_name": "random_forest",
+    "timestamp": "2025-12-28T19:48:52.660725"
+  },
+  "feature_names": [
+    "Gender",
+    "Age",
+    "Neighbourhood",
+    "Scholarship",
+    "Hipertension",
+    "Diabetes",
+    "Alcoholism",
+    "Handcap",
+    "SMS_received",
+    "LeadTimeDays",
+    "ScheduledHour",
+    "ScheduledDayOfWeek",
+    "AppointmentDayOfWeek"
+  ],
+  "training_date": "2025-12-28T19:48:52.707297"
+}

@@ -1,0 +1,35 @@
+{
+  "best_model": "xgboost",
+  "best_score": 0.7454818167199568,
+  "all_metrics": {
+    "logistic_regression": {
+      "auc": 0.6711042253558326,
+      "f1": 0.4121783602365351,
+      "accuracy": 0.6672396634397901,
+      "model_name": "logistic_regression",
+      "timestamp": "2025-12-28T19:48:52.554709"
+    },
+    "random_forest": {
+      "auc": 0.7445399203655825,
+      "f1": 0.45147103427358204,
+      "accuracy": 0.6727585270967158,
+      "model_name": "random_forest",
+      "timestamp": "2025-12-28T19:48:52.660725"
+    },
+    "gradient_boosting": {
+      "auc": 0.7420490147737213,
+      "f1": 0.039334341906202726,
+      "accuracy": 0.7989233692210259,
+      "model_name": "gradient_boosting",
+      "timestamp": "2025-12-28T19:48:52.826905"
+    },
+    "xgboost": {
+      "auc": 0.7454818167199568,
+      "f1": 0.45601039636127355,
+      "accuracy": 0.6212792906903103,
+      "model_name": "xgboost",
+      "timestamp": "2025-12-28T19:48:52.860844"
+    }
+  },
+  "selection_date": "2025-12-28T19:48:52.868397"
+}

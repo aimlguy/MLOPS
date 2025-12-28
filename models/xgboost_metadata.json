@@ -1,0 +1,26 @@
+{
+  "model_name": "xgboost",
+  "metrics": {
+    "auc": 0.7454818167199568,
+    "f1": 0.45601039636127355,
+    "accuracy": 0.6212792906903103,
+    "model_name": "xgboost",
+    "timestamp": "2025-12-28T19:48:52.860844"
+  },
+  "feature_names": [
+    "Gender",
+    "Age",
+    "Neighbourhood",
+    "Scholarship",
+    "Hipertension",
+    "Diabetes",
+    "Alcoholism",
+    "Handcap",
+    "SMS_received",
+    "LeadTimeDays",
+    "ScheduledHour",
+    "ScheduledDayOfWeek",
+    "AppointmentDayOfWeek"
+  ],
+  "training_date": "2025-12-28T19:48:52.866832"
+}

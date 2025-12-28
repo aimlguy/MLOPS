@@ -1,0 +1,44 @@
+# Prometheus Configuration for MLOps Monitoring
+# This file configures Prometheus to scrape metrics from the ML model API
+
+global:
+  scrape_interval: 15s # Scrape metrics every 15 seconds
+  evaluation_interval: 15s # Evaluate rules every 15 seconds
+  external_labels:
+    monitor: 'mlops-noshow-prediction'
+
+# Alerting configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+          # - 'alertmanager:9093'  # Uncomment if using Alertmanager
+
+# Alert rules files
+rule_files:
+  - 'alert_rules.yml'
+
+# Scrape configurations
+scrape_configs:
+  # Scrape Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Scrape ML model API metrics
+  - job_name: 'ml_model_api'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets:
+          - 'localhost:8000'  # Local FastAPI
+          # - 'ml-api-service:8000'  # Kubernetes service
+          # - 'your-cloud-run-url:443'  # Cloud Run deployment
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    
+  # Scrape MLflow metrics (if exposed)
+  - job_name: 'mlflow'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['localhost:5000']
+    scrape_interval: 60s

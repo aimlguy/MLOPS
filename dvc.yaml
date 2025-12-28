@@ -1,0 +1,57 @@
+stages:
+  data_validation:
+    cmd: python src/feature_engineering.py
+    deps:
+      - data/raw/noshow.csv
+      - src/feature_engineering.py
+    outs:
+      - data/processed/features.csv
+    params:
+      - feature_engineering
+    metrics:
+      - metrics/data_stats.json:
+          cache: false
+
+  train_baseline:
+    cmd: python src/train_baseline.py --auto-promote
+    deps:
+      - data/raw/noshow.csv
+      - src/train_baseline.py
+    outs:
+      - mlruns
+    metrics:
+      - metrics/baseline_metrics.json:
+          cache: false
+
+  train_improved:
+    cmd: python src/train_improved.py --auto-promote
+    deps:
+      - data/raw/noshow.csv
+      - src/train_improved.py
+    outs:
+      - mlruns
+    metrics:
+      - metrics/improved_metrics.json:
+          cache: false
+
+  train_best:
+    cmd: python src/train_best.py --auto-promote
+    deps:
+      - data/raw/noshow.csv
+      - src/train_best.py
+    outs:
+      - mlruns
+    metrics:
+      - metrics/best_metrics.json:
+          cache: false
+
+  evaluate:
+    cmd: python src/evaluate.py
+    deps:
+      - mlruns
+      - src/evaluate.py
+    outs:
+      - reports/evaluation_report.html
+    metrics:
+      - metrics/final_comparison.json:
+          cache: false

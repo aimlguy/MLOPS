@@ -11,7 +11,7 @@ import { desc } from "drizzle-orm";
 
 export interface IStorage {
   // Model Runs
-  createModelRun(run: InsertModelRun): Promise<ModelRun>;
+  createModelRun(run: Omit<InsertModelRun, 'metrics' | 'parameters'> & { metrics?: any, parameters?: any }): Promise<ModelRun>;
   getModelRuns(): Promise<ModelRun[]>;
   
   // Predictions
@@ -20,13 +20,29 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  async createModelRun(run: InsertModelRun): Promise<ModelRun> {
-    const [newRun] = await db.insert(modelRuns).values(run).returning();
-    return newRun;
+  db = db;
+  
+  async createModelRun(run: Omit<InsertModelRun, 'metrics' | 'parameters'> & { metrics?: any, parameters?: any }): Promise<ModelRun> {
+    const runWithJsonStrings = {
+      ...run,
+      metrics: run.metrics ? JSON.stringify(run.metrics) : null,
+      parameters: run.parameters ? JSON.stringify(run.parameters) : null,
+    };
+    const [newRun] = await db.insert(modelRuns).values(runWithJsonStrings).returning();
+    return {
+      ...newRun,
+      metrics: newRun.metrics ? JSON.parse(newRun.metrics as string) : null,
+      parameters: newRun.parameters ? JSON.parse(newRun.parameters as string) : null,
+    };
   }
 
   async getModelRuns(): Promise<ModelRun[]> {
-    return await db.select().from(modelRuns).orderBy(desc(modelRuns.createdAt));
+    const runs = await db.select().from(modelRuns).orderBy(desc(modelRuns.createdAt));
+    return runs.map(run => ({
+      ...run,
+      metrics: run.metrics ? JSON.parse(run.metrics as string) : null,
+      parameters: run.parameters ? JSON.parse(run.parameters as string) : null,
+    }));
   }
 
   async createPrediction(prediction: InsertPrediction & { predictionProbability: number, predictedNoShow: boolean }): Promise<Prediction> {

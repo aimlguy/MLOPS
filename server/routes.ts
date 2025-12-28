@@ -9,45 +9,68 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
-  // Prediction Endpoint
+  // Prediction Endpoint - Production Model
   app.post(api.predictions.predict.path, async (req, res) => {
     try {
       const input = api.predictions.predict.input.parse(req.body);
       
-      // In a real production environment, this would call the Python FastAPI service
-      // For this demo, we'll simulate the XGBoost model logic with a simplified heuristic
-      // or call a python script using child_process if we had the model trained.
+      // Call production model inference service
+      const { spawn } = await import("child_process");
       
-      // Simple heuristic for demo purposes (since we can't train the XGBoost model instantly on startup)
-      // Factors that increase no-show probability:
-      // - Long lead time
-      // - Previous no-shows (implied generic risk)
-      // - Young age 
-      // - No scholarship
-      
-      const leadTimeMs = new Date(input.appointmentDay).getTime() - new Date(input.scheduledDay).getTime();
-      const leadTimeDays = leadTimeMs / (1000 * 60 * 60 * 24);
-      
-      let score = 0.2; // Base rate
-      
-      if (leadTimeDays > 10) score += 0.2;
-      if (input.age < 30) score += 0.1;
-      if (input.alcoholism) score += 0.1;
-      if (!input.smsReceived && leadTimeDays > 3) score += 0.1;
-      
-      // Clamp between 0 and 1
-      const probability = Math.min(Math.max(score, 0), 0.95);
-      const isNoShow = probability > 0.5;
+      const python = spawn("python", ["-c", `
+import sys
+import json
+sys.path.append(".")
+from src.model_inference import get_inference_service
 
-      const prediction = await storage.createPrediction({
-        ...input,
-        predictionProbability: probability,
-        predictedNoShow: isNoShow
+input_data = ${JSON.stringify(JSON.stringify(input))}
+input_dict = json.loads(input_data)
+
+service = get_inference_service()
+result = service.predict(input_dict)
+print(json.dumps(result))
+`]);
+
+      let output = "";
+      let error = "";
+
+      python.stdout.on("data", (data) => {
+        output += data.toString();
       });
 
-      res.json({
-        probability,
-        isNoShow
+      python.stderr.on("data", (data) => {
+        error += data.toString();
+      });
+
+      python.on("close", async (code) => {
+        if (code !== 0) {
+          return res.status(500).json({
+            error: "Prediction failed",
+            details: error
+          });
+        }
+
+        try {
+          const result = JSON.parse(output);
+          
+          // Store prediction in database
+          await storage.createPrediction({
+            ...input,
+            predictionProbability: result.probability,
+            predictedNoShow: result.isNoShow
+          });
+
+          res.json({
+            probability: result.probability,
+            isNoShow: result.isNoShow,
+            modelName: result.model_name
+          });
+        } catch (e) {
+          res.status(500).json({
+            error: "Failed to parse prediction result",
+            output
+          });
+        }
       });
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -72,9 +95,53 @@ export async function registerRoutes(
   });
 
   app.post(api.pipeline.trigger.path, async (req, res) => {
-    // Simulate triggering an Airflow DAG
     const runId = `run-${Date.now()}`;
     
+    // Trigger GitHub Actions workflow via API
+    const githubToken = process.env.GITHUB_TOKEN;
+    const githubRepo = process.env.GITHUB_REPOSITORY || "discount-Pieter-Levels/MLops";
+    
+    if (githubToken) {
+      try {
+        // Trigger workflow_dispatch event
+        const response = await fetch(
+          `https://api.github.com/repos/${githubRepo}/actions/workflows/model-training.yml/dispatches`,
+          {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${githubToken}`,
+              "Accept": "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28"
+            },
+            body: JSON.stringify({
+              ref: "main",
+              inputs: {
+                run_id: runId
+              }
+            })
+          }
+        );
+
+        if (response.ok) {
+          await storage.createModelRun({
+            runId,
+            status: "running",
+            metrics: {},
+            parameters: { triggered_via: "github_actions", workflow: "model-training.yml" }
+          });
+
+          return res.status(202).json({
+            message: "Pipeline triggered successfully via GitHub Actions",
+            runId,
+            workflow: "model-training.yml"
+          });
+        }
+      } catch (error) {
+        console.error("Failed to trigger GitHub Actions:", error);
+      }
+    }
+    
+    // Fallback: Create DB record
     await storage.createModelRun({
       runId,
       status: "running",
@@ -82,20 +149,131 @@ export async function registerRoutes(
       parameters: { model: "xgboost", n_estimators: 300 }
     });
 
-    // In background, we would update this to completed
-    setTimeout(async () => {
-      await storage.createModelRun({
-        runId: `run-${Date.now()}`,
-        status: "completed",
-        metrics: { auc: 0.85, f1: 0.78 },
-        parameters: { model: "xgboost", n_estimators: 300 }
-      });
-    }, 5000);
-
     res.status(202).json({
-      message: "Pipeline triggered successfully",
+      message: githubToken 
+        ? "Pipeline triggered (GitHub Actions not configured)" 
+        : "Pipeline triggered (local mode - set GITHUB_TOKEN for production)",
       runId
     });
+  });
+
+  app.delete("/api/pipeline/reset", async (req, res) => {
+    // Reset pipeline by clearing database
+    try {
+      const db = storage.db;
+      db.exec("DELETE FROM model_runs");
+      
+      // Re-seed with initial data
+      await seedDatabase();
+      
+      res.json({
+        message: "Pipeline reset successfully"
+      });
+    } catch (err) {
+      res.status(500).json({
+        error: "Failed to reset pipeline",
+        message: err instanceof Error ? err.message : String(err)
+      });
+    }
+  });
+
+  // Monitoring Status Endpoints
+  app.get("/api/monitoring/status", async (req, res) => {
+    try {
+      const { spawn } = await import("child_process");
+      
+      const python = spawn("python", ["-c", `
+import sys
+sys.path.append(".")
+from src.monitoring_api import get_comprehensive_status
+import json
+print(json.dumps(get_comprehensive_status()))
+`]);
+
+      let output = "";
+      let error = "";
+
+      python.stdout.on("data", (data) => {
+        output += data.toString();
+      });
+
+      python.stderr.on("data", (data) => {
+        error += data.toString();
+      });
+
+      python.on("close", (code) => {
+        if (code !== 0) {
+          return res.status(500).json({
+            error: "Failed to get monitoring status",
+            details: error
+          });
+        }
+
+        try {
+          const status = JSON.parse(output);
+          res.json(status);
+        } catch (e) {
+          res.status(500).json({
+            error: "Failed to parse monitoring status",
+            output
+          });
+        }
+      });
+    } catch (err) {
+      res.status(500).json({
+        error: "Server error",
+        message: err instanceof Error ? err.message : String(err)
+      });
+    }
+  });
+
+  app.post("/api/monitoring/drift-report", async (req, res) => {
+    try {
+      const { spawn } = await import("child_process");
+      
+      const python = spawn("python", ["-c", `
+import sys
+sys.path.append(".")
+from src.monitoring_api import generate_drift_report
+import json
+print(json.dumps(generate_drift_report()))
+`]);
+
+      let output = "";
+      let error = "";
+
+      python.stdout.on("data", (data) => {
+        output += data.toString();
+      });
+
+      python.stderr.on("data", (data) => {
+        error += data.toString();
+      });
+
+      python.on("close", (code) => {
+        if (code !== 0) {
+          return res.status(500).json({
+            error: "Failed to generate drift report",
+            details: error
+          });
+        }
+
+        try {
+          const result = JSON.parse(output);
+          res.json(result);
+        } catch (e) {
+          res.status(500).json({
+            error: "Failed to parse result",
+            output
+          });
+        }
+      });
+    } catch (err) {
+      res.status(500).json({
+        error: "Server error",
+        message: err instanceof Error ? err.message : String(err)
+      });
+    }
   });
 
   // Seed Data

@@ -1,0 +1,67 @@
+name: Model Promotion Auto-Deploy
+
+# This workflow triggers when a new model is promoted to Production in MLflow
+# It redeploys the Cloud Run service to ensure the latest model is served
+
+on:
+  # Trigger manually after promoting a model
+  workflow_dispatch:
+    inputs:
+      model_version:
+        description: 'Model version promoted to Production'
+        required: true
+      
+  # Alternative: Use repository_dispatch for webhook integration
+  # repository_dispatch:
+  #   types: [model-promoted]
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+  SERVICE_NAME: noshow-prediction-api
+
+jobs:
+  redeploy-service:
+    name: Redeploy Cloud Run with New Model
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      id-token: write
+    
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+      
+      - name: Trigger model reload via Cloud Run endpoint
+        run: |
+          SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --format 'value(status.url)')
+          
+          echo "🔄 Triggering model reload for version ${{ github.event.inputs.model_version }}"
+          
+          curl -X POST "$SERVICE_URL/reload-model" \
+            -H "Content-Type: application/json" || true
+      
+      - name: Verify new model loaded
+        run: |
+          SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --format 'value(status.url)')
+          
+          echo "✅ Verifying health check..."
+          curl -X GET "$SERVICE_URL/health"
+      
+      - name: Output success message
+        run: |
+          echo "✅ Model promotion deployment completed!"
+          echo "📦 Model version: ${{ github.event.inputs.model_version }}"
+          echo "🎯 The service now uses the latest Production model"

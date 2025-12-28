@@ -1,0 +1,83 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node.js (for client/server)
+node_modules/
+client/
+server/
+package.json
+package-lock.json
+tsconfig.json
+vite.config.ts
+
+# Documentation
+README.md
+*.md
+docs/
+
+# Tests
+tests/
+test_*.py
+*_test.py
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+azure-pipelines.yml
+
+# Airflow (not needed in serving container)
+airflow/
+dags/
+
+# Data (large files - should be loaded at runtime)
+data/raw/*.csv
+data/processed/*.csv
+
+# DVC
+.dvc/
+*.dvc
+
+# MLflow (large artifacts)
+mlruns/
+mlartifacts/
+
+# Jupyter
+*.ipynb
+.ipynb_checkpoints
+
+# Build artifacts
+dist/
+build/
+*.egg-info
+
+# Logs
+*.log
+logs/
+
+# Configs not needed in container
+.env.example
+docker-compose.yml

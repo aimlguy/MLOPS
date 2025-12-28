@@ -1,0 +1,30 @@
+# MLOps Pipeline Requirements
+# Generated from pyproject.toml
+
+# Core ML & Data Science
+numpy>=2.4.0
+pandas>=2.3.3
+scikit-learn>=1.8.0
+xgboost>=3.1.2
+
+# MLflow & Experiment Tracking
+mlflow>=3.8.0
+
+# API & Serving
+fastapi>=0.127.0
+uvicorn>=0.40.0
+pydantic>=2.0.0
+
+# Data Versioning
+dvc>=3.65.0
+
+# Data Validation
+great-expectations>=1.10.0
+
+# Additional dependencies for production
+python-multipart>=0.0.9
+google-cloud-storage>=2.10.0
+boto3>=1.34.0
+
+# Airflow (optional for local dev)
+# apache-airflow>=2.8.0

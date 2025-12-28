@@ -7,6 +7,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, roc_auc_score, f1_score
 from sklearn.preprocessing import LabelEncoder
 from src.feature_engineering import load_data, preprocess, build_features, engineer_patient_history
+from src.model_registry import ModelRegistry
 
 def train_model(data_path: str, model_path: str = "models/xgboost_model.json"):
     mlflow.set_experiment("noshow-prediction")
@@ -70,6 +71,50 @@ def train_model(data_path: str, model_path: str = "models/xgboost_model.json"):
         # Save local artifact
         model.save_model(model_path)
         print(f"Model saved to {model_path}")
+        
+        # Get run ID for model registration
+        run_id = mlflow.active_run().info.run_id
+        
+        return run_id, {"auc": auc, "accuracy": acc, "f1": f1}
+
+def train_and_promote_if_better(data_path: str, model_path: str = "models/xgboost_model.json"):
+    """
+    Train model and automatically promote to Production if it performs better.
+    This is the recommended function to use for production workflows.
+    """
+    # Train the model
+    run_id, metrics = train_model(data_path, model_path)
+    
+    # Initialize model registry
+    registry = ModelRegistry()
+    
+    # Automatically promote if better than current Production
+    promoted_version = registry.auto_promote_if_better(
+        run_id=run_id,
+        metric_name="auc",
+        higher_is_better=True
+    )
+    
+    if promoted_version:
+        print(f"\n{'='*60}")
+        print(f"✅ MODEL PROMOTED TO PRODUCTION!")
+        print(f"   Version: {promoted_version}")
+        print(f"   AUC: {metrics['auc']:.4f}")
+        print(f"{'='*60}\n")
+        return promoted_version
+    else:
+        print(f"\n{'='*60}")
+        print(f"ℹ️ Model not promoted (current Production model is better)")
+        print(f"   Candidate AUC: {metrics['auc']:.4f}")
+        print(f"{'='*60}\n")
+        return None
 
 if __name__ == "__main__":
-    train_model("data/raw/noshow.csv")
+    import sys
+    
+    if len(sys.argv) > 1 and sys.argv[1] == "--auto-promote":
+        # Use automatic promotion
+        train_and_promote_if_better("data/raw/noshow.csv")
+    else:
+        # Just train without promotion
+        train_model("data/raw/noshow.csv")

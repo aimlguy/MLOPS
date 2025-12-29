@@ -69,7 +69,7 @@ mlartifacts/
 .ipynb_checkpoints
 
 # Build artifacts
-dist/
+# dist/  # NEEDED for minimal Dockerfile
 build/
 *.egg-info
 

@@ -3,14 +3,42 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
+import { register, Counter, Histogram, Gauge } from "prom-client";
+
+// Prometheus metrics
+const predictionCounter = new Counter({
+  name: 'model_predictions_total',
+  help: 'Total number of predictions made',
+  labelNames: ['outcome']
+});
+
+const predictionLatency = new Histogram({
+  name: 'model_prediction_latency_seconds',
+  help: 'Prediction latency in seconds',
+  buckets: [0.1, 0.5, 1, 2, 5, 10]
+});
+
+const activePredictions = new Gauge({
+  name: 'model_active_predictions',
+  help: 'Number of active predictions being processed'
+});
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   
+  // Prometheus metrics endpoint
+  app.get('/api/metrics', async (req, res) => {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+  });
+  
   // Prediction Endpoint - Production Model
   app.post(api.predictions.predict.path, async (req, res) => {
+    const startTime = Date.now();
+    activePredictions.inc();
+    
     try {
       const input = api.predictions.predict.input.parse(req.body);
       
@@ -43,7 +71,12 @@ print(json.dumps(result))
       });
 
       python.on("close", async (code) => {
+        const duration = (Date.now() - startTime) / 1000;
+        activePredictions.dec();
+        
         if (code !== 0) {
+          predictionCounter.inc({ outcome: 'error' });
+          predictionLatency.observe(duration);
           return res.status(500).json({
             error: "Prediction failed",
             details: error
@@ -52,6 +85,10 @@ print(json.dumps(result))
 
         try {
           const result = JSON.parse(output);
+          
+          // Track metrics
+          predictionCounter.inc({ outcome: result.isNoShow ? 'no_show' : 'show' });
+          predictionLatency.observe(duration);
           
           // Store prediction in database
           await storage.createPrediction({

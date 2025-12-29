@@ -11,14 +11,14 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
-COPY pyproject.toml* ./
+COPY package.json package-lock.json ./
+COPY pyproject.toml ./
 
 # Install Node dependencies
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 # Install Python dependencies
-RUN pip3 install --no-cache-dir \
+RUN pip3 install --break-system-packages --no-cache-dir \
     xgboost \
     scikit-learn \
     pandas \

@@ -1,0 +1,38 @@
+# Simplified Dockerfile for Cloud Run
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install Node.js
+RUN apt-get update && apt-get install -y \
+    curl \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy Python requirements
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application files
+COPY package.json package-lock.json ./
+COPY server ./server
+COPY shared ./shared
+COPY dist ./dist
+COPY models ./models
+COPY src/model_inference.py ./src/model_inference.py
+
+# Install Node dependencies
+RUN npm install --omit=dev --production
+
+# Build application
+ENV NODE_ENV=production
+RUN npm run build
+
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:8080/api/pipeline/runs', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+CMD ["node", "dist/index.cjs"]

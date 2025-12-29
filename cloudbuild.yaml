@@ -8,7 +8,7 @@ steps:
       - '-t'
       - 'gcr.io/$PROJECT_ID/mlops-backend:latest'
       - '-f'
-      - 'Dockerfile.production'
+      - 'Dockerfile.minimal'
       - '.'
 
   # Push the container image to Container Registry

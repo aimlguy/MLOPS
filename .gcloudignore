@@ -1,0 +1,25 @@
+# Ignore development files
+.git
+.github
+.venv
+node_modules/client
+client/node_modules
+
+# Ignore data
+data/raw
+mlruns/
+monitoring/
+
+# Ignore docs
+docs/
+*.md
+!README.md
+
+# Ignore tests
+tests/
+test_*.py
+
+# Ignore temp files
+__pycache__/
+*.pyc
+.DS_Store

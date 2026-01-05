@@ -1,8 +1,66 @@
 # No-Show Prediction MLOps Pipeline
 
-> **Academic Project**: End-to-end ML pipeline demonstrating automatic model promotion through CI/CD
+> **Production MLOps System**: End-to-end ML pipeline deployed on GCP Cloud Run
 
-This repository demonstrates a complete MLOps pipeline that automatically replaces poor models with better ones based on performance metrics. The system trains three progressively better models and automatically promotes the best one to production.
+[![Deployed on Cloud Run](https://img.shields.io/badge/Deployed-Cloud%20Run-blue?logo=google-cloud)](https://noshow-prediction-api-865778656829.asia-south1.run.app)
+[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.127+-green.svg)](https://fastapi.tiangolo.com)
+[![XGBoost](https://img.shields.io/badge/XGBoost-3.1+-orange.svg)](https://xgboost.readthedocs.io/)
+
+**Live API**: https://noshow-prediction-api-865778656829.asia-south1.run.app
+
+A complete MLOps pipeline that predicts medical appointment no-shows using machine learning. The system demonstrates progressive model improvement (Baseline → Improved → Best) with automatic training, versioning, and cloud deployment.
+
+## 🚀 Quick Start
+
+### Test the Live API
+
+```bash
+# Health check
+curl https://noshow-prediction-api-865778656829.asia-south1.run.app/health
+
+# Make a prediction
+curl -X POST https://noshow-prediction-api-865778656829.asia-south1.run.app/api/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "patient_id": 12345,
+    "gender": "F",
+    "age": 35,
+    "scheduled_day": "2024-04-15T10:30:00",
+    "appointment_day": "2024-04-20T14:00:00",
+    "neighbourhood": "JARDIM CAMBURI",
+    "scholarship": false,
+    "hypertension": false,
+    "diabetes": false,
+    "alcoholism": false,
+    "handicap": 0,
+    "sms_received": true
+  }'
+```
+
+### Run Locally
+
+```bash
+# Clone repository
+git clone <repository-url>
+cd MLops
+
+# Create virtual environment
+python -m venv .venv
+.venv\Scripts\Activate.ps1  # Windows
+# source .venv/bin/activate  # Linux/Mac
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run training pipeline
+dvc repro
+
+# Start local server
+npm run dev  # Full stack (Frontend + Backend)
+# OR
+python -m uvicorn src.predict:app --reload  # API only
+```
 
 ## 🎯 Key Features
 
@@ -299,31 +357,48 @@ mlflow server --backend-store-uri ./mlruns --default-artifact-root ./mlruns
 
 ```bash
 # Check logs
-gcloud run services logs read noshow-prediction \
+gcloud run services logs read noshow-prediction-api \
   --region=asia-south1 --limit=50
 
 # View service details
-gcloud run services describe noshow-prediction --region=asia-south1
+gcloud run services describe noshow-prediction-api --region=asia-south1
+
+# Redeploy
+gcloud run deploy noshow-prediction-api \
+  --source . \
+  --platform managed \
+  --region asia-south1
 ```
 
-### Docker Build Failures
+## 🌐 Production Deployment
 
-```bash
-# Test locally
-docker build -t noshow-test -f docker/Dockerfile .
-docker run -p 8080:8080 noshow-test
-```
+**Live Service**: https://noshow-prediction-api-865778656829.asia-south1.run.app
+
+- **Platform**: Google Cloud Run (asia-south1 - Mumbai)
+- **Memory**: 4GB
+- **CPU**: 4 cores
+- **Timeout**: 300 seconds
+- **Max Instances**: 10 (auto-scaling)
+- **Authentication**: Public (unauthenticated)
+
+### Endpoints
+
+- `GET /health` - Health check
+- `POST /api/predict` - Prediction endpoint
+- `GET /api/monitoring/status` - System status
+- `GET /api/metrics` - Prometheus metrics
 
 ## 📚 Additional Resources
 
 - [MLflow Documentation](https://mlflow.org/docs/latest/index.html)
 - [Cloud Run Documentation](https://cloud.google.com/run/docs)
 - [GitHub Actions Guide](https://docs.github.com/actions)
-- [Evaluation Report](reports/evaluation_report.md) (generated after training)
+- [FastAPI Documentation](https://fastapi.tiangolo.com)
+- [DVC Documentation](https://dvc.org/doc)
 
 ## 🤝 Contributing
 
-This is an academic project. For questions or suggestions:
+This is a production MLOps system. For questions or suggestions:
 1. Open an issue
 2. Submit a pull request
 3. Contact the maintainers
@@ -334,5 +409,7 @@ MIT License - See LICENSE file for details
 
 ---
 
-**Made with ❤️ for MLOps education**  
-*Demonstrating automatic model improvement through CI/CD*
+**Deployed on GCP Cloud Run**  
+*Production-ready MLOps pipeline with automatic model training and versioning*
+
+**Live API**: https://noshow-prediction-api-865778656829.asia-south1.run.app

@@ -1,0 +1,17 @@
+# Minimal requirements for API deployment (Cloud Run)
+# Core ML & Data Science
+numpy>=2.4.0
+pandas>=2.3.3
+scikit-learn>=1.8.0
+xgboost>=3.1.2
+
+# MLflow & Experiment Tracking (minimal)
+mlflow>=3.8.0
+
+# API Framework
+fastapi>=0.127.0
+uvicorn>=0.40.0
+pydantic>=2.0.0
+
+# Monitoring
+prometheus-client>=0.22.0

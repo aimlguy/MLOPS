@@ -71,8 +71,7 @@ export default function Predictor() {
   return (
     <Layout>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight mb-1">Inference Engine</h1>
-        <p className="text-muted-foreground">Manual entry interface for patient no-show prediction</p>
+        <h1 className="text-3xl font-bold tracking-tight">Inference Engine</h1>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

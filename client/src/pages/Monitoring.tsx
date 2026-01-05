@@ -27,14 +27,7 @@ interface ComponentStatus {
 interface MonitoringData {
   timestamp: string;
   components: {
-    dvc: ComponentStatus;
-    airflow: ComponentStatus;
-    mlflow: ComponentStatus;
-    evidently: ComponentStatus;
-    prometheus: ComponentStatus;
-    grafana: ComponentStatus;
-    docker: ComponentStatus;
-    github_actions: ComponentStatus;
+    [key: string]: ComponentStatus;
   };
 }
 
@@ -231,8 +224,6 @@ export default function Monitoring() {
 
   const componentConfig = [
     { key: "dvc", title: "DVC (Data Version Control)", icon: Database, color: "blue" },
-    { key: "airflow", title: "Apache Airflow", icon: Workflow, color: "purple" },
-    { key: "mlflow", title: "MLflow", icon: Activity, color: "emerald" },
     { key: "evidently", title: "Evidently AI", icon: Eye, color: "orange" },
     { key: "prometheus", title: "Prometheus", icon: BarChart3, color: "red" },
     { key: "grafana", title: "Grafana", icon: Server, color: "yellow" },

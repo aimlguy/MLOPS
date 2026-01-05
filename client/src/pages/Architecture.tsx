@@ -24,11 +24,11 @@ export default function Architecture() {
                </div>
                <div>
                  <h3 className="font-bold text-lg">Data Ingestion</h3>
-                 <p className="text-sm text-muted-foreground">PostgreSQL + DVC</p>
+                 <p className="text-sm text-muted-foreground">CSV + DVC</p>
                </div>
                <div className="h-px w-full bg-border" />
                <div className="text-xs text-muted-foreground font-mono">
-                 Raw data validation via Great Expectations
+                 Raw data validation and versioning
                </div>
              </div>
 
@@ -93,7 +93,6 @@ export default function Architecture() {
               <div className="flex flex-wrap gap-2">
                 <Badge variant="secondary">DVC</Badge>
                 <Badge variant="secondary">Git</Badge>
-                <Badge variant="secondary">S3 Bucket</Badge>
               </div>
             </CardContent>
           </Card>
@@ -110,11 +109,11 @@ export default function Architecture() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Before any training run, data passes through Great Expectations suites. If data drift or schema violations are detected, the pipeline halts automatically.
+                Data quality checks ensure schema validity and statistical properties before training. Automated validation detects anomalies and drift in incoming data.
               </p>
               <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary">Great Expectations</Badge>
-                <Badge variant="secondary">PyTest</Badge>
+                <Badge variant="secondary">Pandas Profiling</Badge>
+                <Badge variant="secondary">Custom Validators</Badge>
               </div>
             </CardContent>
           </Card>
@@ -131,11 +130,11 @@ export default function Architecture() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Apache Airflow manages the DAG (Directed Acyclic Graph) of tasks: Extraction → Validation → Transformation → Training → Evaluation → Deployment.
+                GitHub Actions orchestrates the CI/CD pipeline: Data Validation → Model Training → Evaluation → Deployment. Automated workflows trigger on code changes and scheduled intervals.
               </p>
               <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary">Airflow</Badge>
-                <Badge variant="secondary">Celery Workers</Badge>
+                <Badge variant="secondary">GitHub Actions</Badge>
+                <Badge variant="secondary">DVC Pipelines</Badge>
               </div>
             </CardContent>
           </Card>

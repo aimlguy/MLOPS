@@ -145,7 +145,7 @@ export default function Dashboard() {
         <Card className="lg:col-span-2 glass-panel">
           <CardHeader>
             <CardTitle>Performance History</CardTitle>
-            <CardDescription>Accuracy vs F1 Score across recent runs</CardDescription>
+            <CardDescription>Accuracy vs Models across recent runs</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">

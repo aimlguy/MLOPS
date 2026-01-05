@@ -51,16 +51,11 @@
     "title": "ML Model Monitoring Dashboard",
     "tags": ["mlops", "ml-model", "monitoring"],
     "timezone": "browser",
-    "time": {
-      "from": "now-1h",
-      "to": "now"
-    },
-    "refresh": "30s",
     "panels": [
       {
         "id": 1,
-        "title": "Total Predictions",
-        "type": "stat",
+        "title": "Model Predictions Rate",
+        "type": "graph",
         "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
         "targets": [
           {
@@ -68,23 +63,19 @@
               "type": "prometheus",
               "uid": "${DS_PROMETHEUS}"
             },
-            "expr": "model_predictions_total",
-            "legendFormat": "{{outcome}}",
-            "refId": "A",
-            "instant": true
+            "expr": "rate(model_predictions_total[5m])",
+            "legendFormat": "{{model_version}} - {{outcome}}",
+            "refId": "A"
           }
         ],
-        "options": {
-          "colorMode": "value",
-          "graphMode": "area",
-          "justifyMode": "auto",
-          "orientation": "horizontal"
+        "yaxis": {
+          "label": "Predictions/sec"
         }
       },
       {
         "id": 2,
-        "title": "Average Latency",
-        "type": "stat",
+        "title": "Prediction Latency (P95)",
+        "type": "graph",
         "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
         "targets": [
           {
@@ -92,20 +83,18 @@
               "type": "prometheus",
               "uid": "${DS_PROMETHEUS}"
             },
-            "expr": "model_prediction_latency_seconds_sum / model_prediction_latency_seconds_count",
-            "legendFormat": "Avg Latency (s)",
-            "refId": "A",
-            "instant": true
+            "expr": "histogram_quantile(0.95, rate(model_prediction_latency_seconds_bucket[5m]))",
+            "legendFormat": "{{model_version}}",
+            "refId": "A"
           }
         ],
-        "options": {
-          "colorMode": "value",
-          "unit": "s"
+        "yaxis": {
+          "label": "Latency (seconds)"
         }
       },
       {
         "id": 3,
-        "title": "Active Predictions",
+        "title": "Model Performance (AUC)",
         "type": "gauge",
         "gridPos": {"x": 0, "y": 8, "w": 8, "h": 6},
         "targets": [
@@ -114,8 +103,8 @@
               "type": "prometheus",
               "uid": "${DS_PROMETHEUS}"
             },
-            "expr": "model_active_predictions",
-            "legendFormat": "Active",
+            "expr": "model_performance_auc",
+            "legendFormat": "AUC Score",
             "refId": "A"
           }
         ],
@@ -145,7 +134,7 @@
       },
       {
         "id": 4,
-        "title": "Prediction Counts",
+        "title": "Data Drift Scores",
         "type": "graph",
         "gridPos": {"x": 8, "y": 8, "w": 16, "h": 6},
         "targets": [
@@ -154,8 +143,8 @@
               "type": "prometheus",
               "uid": "${DS_PROMETHEUS}"
             },
-            "expr": "increase(model_predictions_total[1m])",
-            "legendFormat": "{{outcome}}",
+            "expr": "model_data_drift_score",
+            "legendFormat": "{{feature_name}}",
             "refId": "A"
           }
         ],

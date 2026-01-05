@@ -64,7 +64,7 @@ def get_dvc_pipeline_stages() -> List[Dict[str, str]]:
         return []
 
 
-def get_airflow_status() -> Dict[str, Any]:
+def get_airflow_status() ->     Dict[str, Any]:
     """Get Airflow DAG status"""
     try:
         # Check if DAG file exists
@@ -355,8 +355,6 @@ def get_comprehensive_status() -> Dict[str, Any]:
         "timestamp": datetime.now().isoformat(),
         "components": {
             "dvc": get_dvc_status(),
-            "airflow": get_airflow_status(),
-            "mlflow": get_mlflow_status(),
             "evidently": get_evidently_status(),
             "prometheus": get_prometheus_status(),
             "grafana": get_grafana_status(),

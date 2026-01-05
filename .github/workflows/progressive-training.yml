@@ -1,0 +1,125 @@
+name: Progressive Model Training & Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: 'Model stage to train'
+        required: true
+        type: choice
+        options:
+          - baseline
+          - improved
+          - best
+      run_id:
+        description: 'Run ID for tracking'
+        required: true
+        type: string
+
+jobs:
+  train-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Train model stage
+        id: train
+        run: |
+          echo "Training ${{ inputs.stage }} model..."
+          python src/train_progressive.py --stage ${{ inputs.stage }} --auto-promote > training_output.txt
+          cat training_output.txt
+          
+          # Extract metrics from output
+          AUC=$(grep -oP '"auc":\s*\K[0-9.]+' training_output.txt | head -1)
+          echo "auc=$AUC" >> $GITHUB_OUTPUT
+          echo "AUC: $AUC"
+      
+      - name: Get current model AUC
+        id: current
+        run: |
+          # Read pipeline state
+          if [ -f pipeline_state.json ]; then
+            CURRENT_AUC=$(python -c "import json; print(json.load(open('pipeline_state.json'))['current_model_auc'])")
+          else
+            CURRENT_AUC=0
+          fi
+          echo "current_auc=$CURRENT_AUC" >> $GITHUB_OUTPUT
+          echo "Current AUC: $CURRENT_AUC"
+      
+      - name: Check if should deploy
+        id: check
+        run: |
+          NEW_AUC=${{ steps.train.outputs.auc }}
+          CURRENT_AUC=${{ steps.current.outputs.current_auc }}
+          
+          if (( $(echo "$NEW_AUC > $CURRENT_AUC" | bc -l) )); then
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+            echo "✅ New model is better! Deploying..."
+          else
+            echo "should_deploy=false" >> $GITHUB_OUTPUT
+            echo "❌ New model is not better. Skipping deployment."
+          fi
+      
+      - name: Build Docker image
+        if: steps.check.outputs.should_deploy == 'true'
+        run: |
+          echo "Building Docker image with ${{ inputs.stage }} model..."
+          docker build -f Dockerfile.api -t noshow-api:${{ inputs.stage }} .
+      
+      - name: Deploy locally (Docker)
+        if: steps.check.outputs.should_deploy == 'true'
+        run: |
+          echo "Stopping existing container..."
+          docker stop noshow-api || true
+          docker rm noshow-api || true
+          
+          echo "Starting new container with ${{ inputs.stage }} model..."
+          docker run -d \
+            --name noshow-api \
+            -p 8080:8080 \
+            -v $(pwd)/mlruns:/app/mlruns \
+            noshow-api:${{ inputs.stage }}
+          
+          echo "✅ Deployed ${{ inputs.stage }} model"
+      
+      - name: Update pipeline state
+        if: steps.check.outputs.should_deploy == 'true'
+        run: |
+          python -c "
+from src.pipeline_state import get_pipeline_state
+state = get_pipeline_state()
+state.record_deployment('${{ inputs.stage }}', ${{ steps.train.outputs.auc }})
+print(f'✅ Updated pipeline state: ${{ inputs.stage }} (AUC: ${{ steps.train.outputs.auc }})')
+"
+      
+      - name: Upload model artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-${{ inputs.stage }}-${{ inputs.run_id }}
+          path: |
+            models/
+            mlruns/
+            pipeline_state.json
+      
+      - name: Deployment summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Stage:** ${{ inputs.stage }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Run ID:** ${{ inputs.run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**New AUC:** ${{ steps.train.outputs.auc }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Current AUC:** ${{ steps.current.outputs.current_auc }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed:** ${{ steps.check.outputs.should_deploy }}" >> $GITHUB_STEP_SUMMARY

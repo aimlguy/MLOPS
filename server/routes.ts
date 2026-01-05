@@ -131,80 +131,158 @@ print(json.dumps(result))
     res.json(runs);
   });
 
+  // Get pipeline state
+  app.get("/api/pipeline/state", async (req, res) => {
+    try {
+      const { spawn } = await import("child_process");
+      const python = spawn("python", ["-c", `
+import sys
+import json
+sys.path.append(".")
+from src.pipeline_state import get_pipeline_state
+state = get_pipeline_state()
+print(json.dumps(state.to_dict()))
+`]);
+
+      let output = "";
+      python.stdout.on("data", (data) => { output += data.toString(); });
+      python.on("close", (code) => {
+        if (code === 0) {
+          res.json(JSON.parse(output));
+        } else {
+          res.status(500).json({ error: "Failed to get pipeline state" });
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get pipeline state" });
+    }
+  });
+
   app.post(api.pipeline.trigger.path, async (req, res) => {
     const runId = `run-${Date.now()}`;
     
-    // Trigger GitHub Actions workflow via API
-    const githubToken = process.env.GITHUB_TOKEN;
-    const githubRepo = process.env.GITHUB_REPOSITORY || "discount-Pieter-Levels/MLops";
+    // Get current pipeline state
+    const { spawn } = await import("child_process");
+    const getState = spawn("python", ["-c", `
+import sys
+import json
+sys.path.append(".")
+from src.pipeline_state import get_pipeline_state
+state = get_pipeline_state()
+print(json.dumps(state.to_dict()))
+`]);
+
+    let stateOutput = "";
+    getState.stdout.on("data", (data) => { stateOutput += data.toString(); });
     
-    if (githubToken) {
-      try {
-        // Trigger workflow_dispatch event
-        const response = await fetch(
-          `https://api.github.com/repos/${githubRepo}/actions/workflows/model-training.yml/dispatches`,
-          {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${githubToken}`,
-              "Accept": "application/vnd.github+json",
-              "X-GitHub-Api-Version": "2022-11-28"
-            },
-            body: JSON.stringify({
-              ref: "main",
-              inputs: {
-                run_id: runId
-              }
-            })
-          }
-        );
-
-        if (response.ok) {
-          await storage.createModelRun({
-            runId,
-            status: "running",
-            metrics: {},
-            parameters: { triggered_via: "github_actions", workflow: "model-training.yml" }
-          });
-
-          return res.status(202).json({
-            message: "Pipeline triggered successfully via GitHub Actions",
-            runId,
-            workflow: "model-training.yml"
-          });
-        }
-      } catch (error) {
-        console.error("Failed to trigger GitHub Actions:", error);
+    getState.on("close", async (code) => {
+      if (code !== 0) {
+        return res.status(500).json({ error: "Failed to get pipeline state" });
       }
-    }
-    
-    // Fallback: Create DB record
-    await storage.createModelRun({
-      runId,
-      status: "running",
-      metrics: {},
-      parameters: { model: "xgboost", n_estimators: 300 }
-    });
 
-    res.status(202).json({
-      message: githubToken 
-        ? "Pipeline triggered (GitHub Actions not configured)" 
-        : "Pipeline triggered (local mode - set GITHUB_TOKEN for production)",
-      runId
+      const pipelineState = JSON.parse(stateOutput);
+      const nextStage = pipelineState.next_stage;
+
+      if (!nextStage) {
+        return res.status(400).json({
+          error: "Pipeline complete",
+          message: "All models trained. Use reset to start over.",
+          current_stage: pipelineState.current_stage
+        });
+      }
+
+      // Trigger GitHub Actions workflow via API with specific stage
+      const githubToken = process.env.GITHUB_TOKEN;
+      const githubRepo = process.env.GITHUB_REPOSITORY || "aimlguy/MLOPS";
+      
+      if (githubToken) {
+        try {
+          // Trigger workflow_dispatch event with stage parameter
+          const response = await fetch(
+            `https://api.github.com/repos/${githubRepo}/actions/workflows/progressive-training.yml/dispatches`,
+            {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${githubToken}`,
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28"
+              },
+              body: JSON.stringify({
+                ref: "main",
+                inputs: {
+                  stage: nextStage,
+                  run_id: runId
+                }
+              })
+            }
+          );
+
+          if (response.ok) {
+            await storage.createModelRun({
+              runId,
+              status: "running",
+              metrics: {},
+              parameters: { 
+                triggered_via: "github_actions", 
+                workflow: "progressive-training.yml",
+                stage: nextStage,
+                current_stage: pipelineState.current_stage
+              }
+            });
+
+            return res.status(202).json({
+              message: `Training ${nextStage} model via GitHub Actions`,
+              runId,
+              workflow: "progressive-training.yml",
+              stage: nextStage,
+              current_stage: pipelineState.current_stage
+            });
+          }
+        } catch (error) {
+          console.error("Failed to trigger GitHub Actions:", error);
+        }
+      }
+      
+      // Fallback: Run locally
+      await storage.createModelRun({
+        runId,
+        status: "running",
+        metrics: {},
+        parameters: { stage: nextStage, current_stage: pipelineState.current_stage }
+      });
+
+      res.status(202).json({
+        message: githubToken 
+          ? "Pipeline triggered (GitHub Actions not configured)" 
+          : `Training ${nextStage} model locally - set GITHUB_TOKEN for GitHub Actions`,
+        runId,
+        stage: nextStage,
+        current_stage: pipelineState.current_stage
+      });
     });
   });
 
-  app.delete("/api/pipeline/reset", async (req, res) => {
-    // Reset pipeline by clearing database
+  app.post("/api/pipeline/reset", async (req, res) => {
+    // Reset pipeline to baseline model
     try {
-      const db = storage.db;
-      db.exec("DELETE FROM model_runs");
+      // Reset the pipeline state
+      const fs = await import("fs");
+      const initialState = {
+        current_stage: "baseline",
+        current_model_auc: 0.0,
+        deployment_history: [],
+        last_updated: new Date().toISOString()
+      };
+      fs.writeFileSync("pipeline_state.json", JSON.stringify(initialState, null, 2));
       
-      // Re-seed with initial data
-      await seedDatabase();
+      // Clear old pipeline runs from database
+      await db.delete(modelRuns);
       
       res.json({
-        message: "Pipeline reset successfully"
+        message: "Pipeline reset to baseline model",
+        current_stage: "baseline",
+        next_stage: "improved",
+        runs_cleared: true
       });
     } catch (err) {
       res.status(500).json({

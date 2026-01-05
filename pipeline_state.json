@@ -1,0 +1,12 @@
+{
+  "current_stage": "baseline",
+  "current_model_auc": 0.7088,
+  "deployment_history": [
+    {
+      "stage": "baseline",
+      "auc": 0.7088,
+      "timestamp": "2026-01-06T00:25:39Z"
+    }
+  ],
+  "last_updated": "2026-01-06T00:25:39Z"
+}

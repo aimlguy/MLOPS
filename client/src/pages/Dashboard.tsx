@@ -1,11 +1,11 @@
 import { Layout } from "@/components/Layout";
-import { usePipelineRuns } from "@/hooks/use-pipeline";
+import { usePipelineRuns, usePipelineState, useResetPipeline } from "@/hooks/use-pipeline";
 import { usePredictionHistory } from "@/hooks/use-predictions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Activity, Play, CheckCircle2, XCircle, Clock, Zap, BarChart3 } from "lucide-react";
+import { Activity, Play, CheckCircle2, XCircle, Clock, Zap, BarChart3, RotateCcw, ArrowRight } from "lucide-react";
 import { useTriggerPipeline } from "@/hooks/use-pipeline";
 import { useToast } from "@/hooks/use-toast";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
@@ -24,8 +24,10 @@ const MOCK_METRICS = [
 
 export default function Dashboard() {
   const { data: runs, isLoading: runsLoading } = usePipelineRuns();
+  const { data: pipelineState } = usePipelineState();
   const { data: predictions, isLoading: predsLoading } = usePredictionHistory();
   const { mutate: triggerPipeline, isPending: isTriggering } = useTriggerPipeline();
+  const { mutate: resetPipeline, isPending: isResetting } = useResetPipeline();
   const { toast } = useToast();
 
   const handleTrigger = () => {
@@ -33,17 +35,95 @@ export default function Dashboard() {
       onSuccess: (data) => {
         toast({
           title: "Pipeline Triggered",
-          description: `Run ID: ${data.runId} started successfully.`,
+          description: `Training ${(data as any).stage || 'next'} model - Run ID: ${data.runId}`,
         });
       },
-      onError: () => {
+      onError: (error: any) => {
         toast({
           title: "Trigger Failed",
-          description: "Could not start the pipeline. Check backend logs.",
+          description: error?.message === "Failed to trigger pipeline" && error?.cause?.status === 400 
+            ? "Pipeline complete. All models trained." 
+            : "Could not start the pipeline. Check backend logs.",
           variant: "destructive",
         });
       }
     });
+  };
+
+  const handleReset = () => {
+    if (!confirm("Are you sure you want to reset to baseline model? This will clear all pipeline runs.")) {
+      return;
+    }
+    
+    resetPipeline(undefined, {
+      onSuccess: () => {
+        toast({
+          title: "Pipeline Reset",
+          description: "Pipeline reset to baseline model successfully.",
+        });
+      },Reset} 
+             disabled={isResetting}
+             variant="outline"
+             className="gap-2 text-orange-500 border-orange-500/50 hover:bg-orange-500/10"
+           >
+             {isResetting ? <Activity className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+             Reset Pipeline
+           </Button>
+           <Button 
+             onClick={handleTrigger} 
+             disabled={isTriggering || !pipelineState?.can_progress}
+             className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25 gap-2"
+           >
+             {isTriggering ? <Activity className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+             {pipelineState?.next_stage ? `Train ${pipelineState.next_stage}` : 'Trigger Pipeline'}
+           </Button>
+        </div>
+      </div>
+
+      {/* Pipeline State Card */}
+      {pipelineState && (
+        <Card className="glass-panel border-l-4 border-l-blue-500 mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="w-5 h-5 text-blue-500" />
+              Progressive Pipeline State
+            </CardTitle>
+            <CardDescription>Current deployment stage and progression</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <Badge variant="outline" className="text-xs px-3 py-1">
+                    Current: <span className="font-bold ml-1 uppercase">{pipelineState.current_stage}</span>
+                  </Badge>
+                  {pipelineState.next_stage && (
+                    <>
+                      <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                      <Badge variant="outline" className="text-xs px-3 py-1 border-primary text-primary">
+                        Next: <span className="font-bold ml-1 uppercase">{pipelineState.next_stage}</span>
+                      </Badge>
+                    </>
+                  )}
+                  {!pipelineState.can_progress && (
+                    <Badge variant="secondary" className="text-xs px-3 py-1 bg-emerald-500/20 text-emerald-500">
+                      Pipeline Complete ✓
+                    </Badge>
+                  )}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Model AUC: <span className="font-mono font-bold text-foreground">{pipelineState.current_model_auc.toFixed(4)}</span>
+                  {pipelineState.deployment_history.length > 0 && (
+                    <span className="ml-4">
+                      Deployments: <span className="font-bold text-foreground">{pipelineState.deployment_history.length}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
   };
 
   const recentPredictions = predictions?.slice(0, 5) || [];

@@ -12,6 +12,18 @@ export function usePipelineRuns() {
   });
 }
 
+export function usePipelineState() {
+  return useQuery({
+    queryKey: ["/api/pipeline/state"],
+    queryFn: async () => {
+      const res = await fetch("/api/pipeline/state");
+      if (!res.ok) throw new Error("Failed to fetch pipeline state");
+      return res.json();
+    },
+    refetchInterval: 5000, // Refresh every 5 seconds
+  });
+}
+
 export function useTriggerPipeline() {
   const queryClient = useQueryClient();
 
@@ -26,6 +38,27 @@ export function useTriggerPipeline() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.pipeline.runs.path] });
+      queryClient.invalidateQueries({ queryKey: ["/api/pipeline/state"] });
     },
   });
 }
+
+export function useResetPipeline() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/pipeline/reset", {
+        method: "POST",
+      });
+
+      if (!res.ok) throw new Error("Failed to reset pipeline");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.pipeline.runs.path] });
+      queryClient.invalidateQueries({ queryKey: ["/api/pipeline/state"] });
+    },
+  });
+}
+

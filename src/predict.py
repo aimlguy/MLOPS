@@ -97,7 +97,40 @@ async def startup_event():
     print("🚀 Starting No-Show Prediction API...")
     print(f"📍 MLflow URI: {MLFLOW_TRACKING_URI}")
     print(f"🎯 Model Name: {MODEL_NAME}")
+    try:
+        load_production_model()
+    except Exception as e:
+        print(f"❌ CRITICAL: Model loading failed on startup: {e}")
+        # The app will continue running, but /health will be unhealthy
+
+@app.post("/reload-model")
+def reload_model():
+    """
+    Manually trigger a reload of the production model.
+    """
+    print("🔄 Received request to reload model...")
     load_production_model()
+    return {"message": "Model reload triggered", "reloaded_model_version": model_info["version"]}
+
+@app.get("/health")
+def health():
+    """
+    Health check endpoint.
+    Returns healthy status if the model is loaded, otherwise unhealthy.
+    """
+    if model and model_info.get("stage") != "error":
+        return {"status": "healthy", "model_version": model_info["version"], "model_stage": model_info["stage"]}
+    else:
+        raise HTTPException(status_code=503, detail={
+            "status": "unhealthy",
+            "reason": "Model is not loaded or in an error state.",
+            "model_info": model_info
+        })
+
+@app.get("/metrics")
+def metrics():
+    return Response(media_type="text/plain", content=monitor.export())
+
 
 @app.post("/predict", response_model=PredictionResponse)
 def predict(request: PredictionRequest):

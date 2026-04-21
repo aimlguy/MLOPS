@@ -6,13 +6,28 @@ import mlflow.xgboost
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, roc_auc_score, f1_score
 from sklearn.preprocessing import LabelEncoder
+from sklearn.base import ClassifierMixin
 from src.feature_engineering import load_data, preprocess, build_features, engineer_patient_history
 from src.model_registry import ModelRegistry
+
+# Patch for XGBoost compatibility issue with recent MLflow/scikit-learn
+class PatchedXGBClassifier(xgb.XGBClassifier, ClassifierMixin):
+    _estimator_type = "classifier"
 
 def train_model(data_path: str, model_path: str = "models/xgboost_model.json"):
     mlflow.set_experiment("noshow-prediction")
     
-    with mlflow.start_run():
+    # Model Type from command-line arguments
+    model_type = "unknown"
+    if "--model-type" in sys.argv:
+        try:
+            model_type = sys.argv[sys.argv.index("--model-type") + 1]
+        except IndexError:
+            print("Warning: --model-type flag provided without a value.")
+
+    with mlflow.start_run(run_name=f"train-{model_type}"):
+        mlflow.set_tag("model_type", model_type)
+        
         # Load & Process
         print("Loading data...")
         df = load_data(data_path)
@@ -52,7 +67,7 @@ def train_model(data_path: str, model_path: str = "models/xgboost_model.json"):
         mlflow.log_params(params)
         
         print("Training XGBoost...")
-        model = xgb.XGBClassifier(**params)
+        model = PatchedXGBClassifier(**params)
         model.fit(X_train, y_train)
         
         # Evaluate

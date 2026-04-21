@@ -2,13 +2,11 @@
 .git
 .github
 .venv
-node_modules/client
-client/node_modules
+node_modules/
+client/
 
-# Ignore data
-data/raw
-mlruns/
-monitoring/
+# Ignore raw data (keep processed)
+data/raw/*.csv
 
 # Ignore docs
 docs/

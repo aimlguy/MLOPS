@@ -96,3 +96,31 @@ def engineer_patient_history(df: pd.DataFrame) -> pd.DataFrame:
     df['rolling_no_show_rate'] = df['rolling_no_show_rate'].fillna(overall_rate)
     
     return df
+
+def main():
+    """Main function to run the feature engineering pipeline."""
+    print("⚙️ Running feature engineering pipeline...")
+    
+    # Define paths
+    input_path = "data/raw/noshow.csv"
+    output_path = "data/processed/features.csv"
+    
+    # Load, process, and save data
+    raw_df = load_data(input_path)
+    processed_df = preprocess(raw_df)
+    features_df = build_features(processed_df)
+    
+    # In a real scenario, you might split history engineering
+    # but for this project, we'll do it all at once on the full dataset
+    # to create features for training.
+    if 'no_show' in features_df.columns:
+        final_df = engineer_patient_history(features_df)
+    else:
+        final_df = features_df
+
+    final_df.to_csv(output_path, index=False)
+    print(f"✅ Feature engineering complete. Output saved to {output_path}")
+
+if __name__ == "__main__":
+    main()
+

@@ -21,6 +21,10 @@ COPY data/ ./data/
 RUN mkdir -p /app/models
 COPY models/ ./models/
 
+# Copy MLflow tracking directory (contains trained model artifacts)
+RUN mkdir -p /app/mlruns
+COPY mlruns/ ./mlruns/
+
 # Create necessary directories
 RUN mkdir -p /app/reports /app/logs
 

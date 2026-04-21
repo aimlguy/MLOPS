@@ -61,7 +61,33 @@ export default function Dashboard() {
           title: "Pipeline Reset",
           description: "Pipeline reset to baseline model successfully.",
         });
-      },Reset} 
+      },
+      onError: () => {
+        toast({
+          title: "Reset Failed",
+          description: "Could not reset the pipeline. Check backend logs.",
+          variant: "destructive",
+        });
+      }
+    });
+  };
+
+  const recentPredictions = predictions?.slice(0, 5) || [];
+  const latestRun = runs?.[0];
+
+  return (
+    <Layout>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight mb-1">Model Overview</h1>
+          <p className="text-muted-foreground">Real-time metrics for No-Show Prediction Model (XGBoost)</p>
+        </div>
+        <div className="flex gap-3">
+           <Button variant="outline" className="gap-2">
+             <Clock className="w-4 h-4" /> History
+           </Button>
+           <Button 
+             onClick={handleReset} 
              disabled={isResetting}
              variant="outline"
              className="gap-2 text-orange-500 border-orange-500/50 hover:bg-orange-500/10"
@@ -124,32 +150,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       )}
-  };
-
-  const recentPredictions = predictions?.slice(0, 5) || [];
-  const latestRun = runs?.[0];
-
-  return (
-    <Layout>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight mb-1">Model Overview</h1>
-          <p className="text-muted-foreground">Real-time metrics for No-Show Prediction Model (XGBoost)</p>
-        </div>
-        <div className="flex gap-3">
-           <Button variant="outline" className="gap-2">
-             <Clock className="w-4 h-4" /> History
-           </Button>
-           <Button 
-             onClick={handleTrigger} 
-             disabled={isTriggering}
-             className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25 gap-2"
-           >
-             {isTriggering ? <Activity className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-             Trigger Pipeline
-           </Button>
-        </div>
-      </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
